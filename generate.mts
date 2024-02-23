@@ -11,7 +11,6 @@ const kebabToCamelCase = (str) => {
   return sanitized.charAt(0).toUpperCase() + sanitized.slice(1);
 };
 
-
 // Function to read all SVG files in the illustrations directory
 const readSVGFiles = (directory) => {
   const svgFiles = fs.readdirSync(directory).filter(file => file.endsWith('.svg'));
@@ -22,6 +21,9 @@ const readSVGFiles = (directory) => {
 const modifySVGContent = (svgFilePath, componentName) => {
   let svgContent = fs.readFileSync(svgFilePath, 'utf8');
 
+  // Array of attributes to ignore during camelCase conversion
+  const ignoreList = ['data-name'];
+
   // Modify SVG content as needed
   svgContent = svgContent.replace('<svg ', '<svg {...{ style }} ');
   svgContent = svgContent.replace(/width="[^"]*" /g, '');
@@ -29,8 +31,17 @@ const modifySVGContent = (svgFilePath, componentName) => {
   svgContent = svgContent.replace(/fill="#6c63ff"/g, 'fill={color}');
   svgContent = svgContent.replace(/height="([^"]*)"/g, `height={size}`);
   svgContent = svgContent.replace(/xmlns:xlink/g, 'xmlnsXlink');
+  svgContent = svgContent.replace(/xmlns:xlink/g, 'xmlnsXlink');
   svgContent = svgContent.replace(/isolation="isolate"/g, "style={{ isolation: 'isolate' }}");
   svgContent = svgContent.replace(/style="isolation:isolate"/g, "style={{ isolation: 'isolate' }}");
+
+  // Create a regex pattern to match hyphenated attributes in the format "some-key"
+  const regexPattern = /-(?!(?:data-|name))(\w)(?=(?:(?!(?:data-|"))[\w-])+="[^"]*")/g;
+
+  // Replace hyphenated attributes with camelCase, ignoring "data-name" key
+  svgContent = svgContent.replace(regexPattern, (_, letter) => {
+    return letter.toUpperCase();
+  });
 
   // Define React component
   const reactComponentContent = `
@@ -49,32 +60,36 @@ export default ${componentName};
 
 const writeReactComponents = (svgFiles, directory, svgDir) => {
   const exportStatements = [''];
+  const processedFiles = new Set();
 
   svgFiles.forEach(file => {
     const svgFilePath = path.join(svgDir, file);
-    
+
     // Sanitize filename
     const componentName = kebabToCamelCase(path.basename(file, '.svg'));
 
-    const outputFileName = `${componentName}.tsx`;
-    const reactComponentContent = modifySVGContent(svgFilePath, componentName);
-    const outputFilePath = path.join(directory, outputFileName);
+    // Ensure only unique file names are processed
+    if (!processedFiles.has(componentName)) {
+      const outputFileName = `${componentName}.tsx`;
+      const reactComponentContent = modifySVGContent(svgFilePath, componentName);
+      const outputFilePath = path.join(directory, outputFileName);
 
-    // Check if the file already exists
-    if (fs.existsSync(outputFilePath)) {
-      console.log(`${outputFileName} already exists. Overwriting...`);
+      // Check if the file already exists
+      if (fs.existsSync(outputFilePath)) {
+        console.log(`${outputFileName} already exists. Overwriting...`);
+      }
+
+      fs.writeFileSync(outputFilePath, reactComponentContent);
+
+      exportStatements.push(`export { default as ${componentName} } from './${componentName}';`);
+      processedFiles.add(componentName);
     }
-
-    fs.writeFileSync(outputFilePath, reactComponentContent);
-
-    exportStatements.push(`export { default as ${componentName} } from './${componentName}';`);
   });
 
   const indexContent = exportStatements.join('\n');
 
   fs.writeFileSync(path.join(directory, 'index.ts'), indexContent);
 }
-
 
 // Update types.ts
 const updateTypesFile = (svgFiles, typesFilePath) => {

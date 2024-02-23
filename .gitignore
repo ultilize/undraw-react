@@ -1,3 +1,5 @@
 old/
 node_modules/
 dist/
+src/illustrations/*.tsx
+convert/
