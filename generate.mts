@@ -48,7 +48,7 @@ const modifySVGContent = (svgFilePath, componentName) => {
 import React from 'react';
 import { UndrawSVGProps } from '../types';
 
-const ${componentName}: React.FC<UndrawSVGProps> = ({ color = '#6D07E8', size = 300, style }) => (
+const ${componentName}: React.FC<UndrawSVGProps> = ({ color = '#6D07E8', size = '100%', style }) => (
     ${svgContent}
 );
 

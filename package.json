@@ -1,6 +1,6 @@
 {
   "name": "undraw-react",
-  "version": "0.0.3-rev2",
+  "version": "0.0.4",
   "description": "Undraw Illustrations for react!",
   "main": "dist/index.js",
   "module": "dist/index.mjs",
